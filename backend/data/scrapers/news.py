@@ -1,154 +1,144 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime
-from typing import Final
-from urllib.parse import quote_plus
+import re
+import string
+from pathlib import Path
+from typing import Final, Literal
 
 import requests
 from dotenv import load_dotenv
+from urllib.parse import quote_plus
 
 from backend.data.models import Signal
 
-load_dotenv()
+# backend/.env — works no matter which directory you run Python from
+_BACKEND_ROOT = Path(__file__).resolve().parents[2]
+load_dotenv(_BACKEND_ROOT / ".env")
+load_dotenv()  # optional: repo-root .env overrides for local experiments
 
 _GNEWS_URL: Final[str] = "https://gnews.io/api/v4/search"
-_HIGH_IMPACT_TITLE_KEYWORDS: Final[tuple[str, ...]] = (
-    "launch",
-    "raises",
-    "acquires",
-    "cuts",
-    "layoffs",
+_HIGH_IMPACT = re.compile(
+    r"\b(launch|raises|acquires|cuts|layoffs|breach)\b",
+    re.IGNORECASE,
 )
-_TAG_KEYWORDS: Final[tuple[str, ...]] = (
-    "ai",
-    "ml",
-    "cloud",
-    "security",
-    "funding",
-    "acquisition",
-    "ipo",
-    "enterprise",
-    "product",
-    "layoff",
-    "partnership",
-    "data",
-    "api",
-    "platform",
-    "revenue",
-    "growth",
-    "saas",
-    "software",
-)
-
-
-def _published_to_date(value: str) -> str:
-    value = (value or "").strip()
-    if not value:
-        return datetime.utcnow().date().isoformat()
-    try:
-        if value.endswith("Z"):
-            value = value.replace("Z", "+00:00")
-        return datetime.fromisoformat(value).date().isoformat()
-    except ValueError:
-        return value[:10] if len(value) >= 10 else datetime.utcnow().date().isoformat()
-
-
-def _impact_from_title(title: str) -> str:
-    t = title.lower()
-    if any(k in t for k in _HIGH_IMPACT_TITLE_KEYWORDS):
-        return "high"
-    return "medium"
 
 
 def _tags_from_title(title: str) -> list[str]:
-    t = title.lower()
-    return [kw for kw in _TAG_KEYWORDS if kw in t]
+    """Words over 4 chars with a leading capital letter (Person 1 spec)."""
+    tags: list[str] = []
+    for raw in title.split():
+        word = raw.strip(string.punctuation)
+        if len(word) > 4 and word[0].isupper():
+            tags.append(word)
+    return tags
 
 
-def _mock_news_signals(company_names: list[str]) -> list[Signal]:
-    out: list[Signal] = []
-    for company in company_names:
-        out.extend(
-            [
-                Signal(
-                    source="news",
-                    title=f"{company} expands AI assistant capabilities for enterprise teams",
-                    body=(
-                        f"Coverage indicates {company} is shipping assistant features aimed at "
-                        "larger accounts, with a focus on permissions and auditability."
-                    )[:200],
-                    impact="high",
-                    date="2025-03-12",
-                    company=company,
-                    tags=["ai", "enterprise", "product"],
-                ),
-                Signal(
-                    source="news",
-                    title=f"{company} announces new partnership to accelerate go-to-market",
-                    body=(
-                        f"Partners are positioning {company} alongside broader cloud marketplaces, "
-                        "suggesting co-sell momentum in mid-market and enterprise."
-                    )[:200],
-                    impact="medium",
-                    date="2025-03-05",
-                    company=company,
-                    tags=["partnership", "growth", "saas"],
-                ),
-                Signal(
-                    source="news",
-                    title=f"Analysts weigh in on {company}'s product velocity versus peers",
-                    body=(
-                        "Analyst commentary highlights roadmap execution and packaging changes as "
-                        f"key variables for {company} over the next two quarters."
-                    )[:200],
-                    impact="medium",
-                    date="2025-02-20",
-                    company=company,
-                    tags=["product", "growth", "saas"],
-                ),
-            ]
-        )
-    return out
+def _clip(text: str | None, max_len: int) -> str:
+    if not text:
+        return ""
+    return text.strip()[:max_len]
+
+
+def _impact_for_title(title: str) -> Literal["high", "medium"]:
+    return "high" if _HIGH_IMPACT.search(title) else "medium"
+
+
+def _published_date(published: str) -> str:
+    published = (published or "").strip()
+    if len(published) >= 10:
+        return published[:10]
+    return "1970-01-01"
+
+
+def _fallback_signals(company: str) -> list[Signal]:
+    """Hardcoded demo signals when the key is missing or the GNews request fails."""
+    return [
+        Signal(
+            source="news",
+            title=f"{company} expands enterprise offering",
+            body="Company announces new enterprise tier targeting Fortune 500 customers.",
+            impact="medium",
+            date="2025-04-01",
+            company=company,
+            tags=["enterprise", "growth"],
+        ),
+        Signal(
+            source="news",
+            title=f"{company} raises Series C",
+            body="Funding round led by top-tier VCs to accelerate product development.",
+            impact="high",
+            date="2025-03-15",
+            company=company,
+            tags=["funding"],
+        ),
+        Signal(
+            source="news",
+            title=f"{company} launches AI features",
+            body="New AI-powered capabilities announced at annual product conference.",
+            impact="high",
+            date="2025-03-01",
+            company=company,
+            tags=["AI", "product"],
+        ),
+    ]
 
 
 def get_news_signals(company_names: list[str]) -> list[Signal]:
+    """
+    GNews-backed signals per company. Uses requests.get (see tests monkeypatch).
+
+    Fallback (exactly three demo rows per company) applies when NEWS_API_KEY is
+    missing/blank or the HTTP request / JSON parsing fails. Successful responses
+    with zero articles return no synthetic rows (Person 1 spec).
+    """
     key = (os.getenv("NEWS_API_KEY") or "").strip()
     if not key or not company_names:
-        return _mock_news_signals(company_names)
+        out: list[Signal] = []
+        for company in company_names:
+            name = (company or "").strip()
+            if name:
+                out.extend(_fallback_signals(name))
+        return out
 
     signals: list[Signal] = []
     for company in company_names:
-        q = quote_plus(company)
+        name = (company or "").strip()
+        if not name:
+            continue
+
+        q = quote_plus(name)
         url = f"{_GNEWS_URL}?q={q}&token={key}&lang=en&max=5"
         try:
-            resp = requests.get(url, timeout=12)
+            resp = requests.get(url, timeout=15)
             resp.raise_for_status()
             payload = resp.json()
-        except (requests.RequestException, ValueError):
-            signals.extend(_mock_news_signals([company]))
+        except (requests.RequestException, ValueError, TypeError):
+            signals.extend(_fallback_signals(name))
             continue
 
         articles = payload.get("articles") or []
-        if not articles:
-            signals.extend(_mock_news_signals([company]))
+        if not isinstance(articles, list):
+            signals.extend(_fallback_signals(name))
             continue
 
         for article in articles:
-            title = (article.get("title") or "").strip() or f"{company} in the news"
+            if not isinstance(article, dict):
+                continue
+            title_raw = (article.get("title") or "").strip()
+            title = _clip(title_raw, 100) or f"{name} in the news"
             description = (article.get("description") or "").strip()
-            body = description[:200] if description else ""
             published = article.get("publishedAt") or article.get("published_at") or ""
             signals.append(
                 Signal(
                     source="news",
                     title=title,
-                    body=body,
-                    impact=_impact_from_title(title),
-                    date=_published_to_date(str(published)),
-                    company=company,
-                    tags=_tags_from_title(title),
-                )
+                    body=_clip(description, 200),
+                    impact=_impact_for_title(title_raw),
+                    date=_published_date(str(published)),
+                    company=name,
+                    tags=_tags_from_title(title_raw),
+                ),
             )
 
     return signals
