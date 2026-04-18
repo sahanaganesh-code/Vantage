@@ -1,62 +1,40 @@
 from __future__ import annotations
 
-from datetime import date
-from typing import Any
+from backend.data.models import Signal
+from backend.data.scrapers.funding import get_funding_signals
+from backend.data.scrapers.jobs import get_job_signals
+from backend.data.scrapers.news import get_news_signals
 
 
-def get_signals_for_company(company: str) -> list[dict[str, Any]]:
-    """Return demo market signals for the given company (hackathon / dev stub)."""
-    today = date.today().isoformat()
-    safe = company.strip() or "your company"
-    return [
-        {
-            "source": "news",
-            "title": f"Category momentum around {safe}",
-            "body": (
-                f"Trade press highlights rising budgets in segments where {safe} competes; "
-                "buyers are re-evaluating incumbents ahead of Q planning."
-            ),
-            "impact": "high",
-            "date": today,
-        },
-        {
-            "source": "reviews",
-            "title": "Peer review themes: onboarding friction",
-            "body": (
-                "Aggregated G2-style feedback cites implementation timelines and "
-                "integrations as the top pain for alternatives in this space."
-            ),
-            "impact": "medium",
-            "date": today,
-        },
-        {
-            "source": "hiring",
-            "title": "Competitor GTM expansion signals",
-            "body": (
-                "Multiple open roles in enterprise AE and sales engineering suggest "
-                "a push upmarket within the next two quarters."
-            ),
-            "impact": "medium",
-            "date": today,
-        },
-        {
-            "source": "product",
-            "title": "Feature velocity on core workflow",
-            "body": (
-                "Public changelog activity shows weekly releases focused on automation "
-                "and API coverage—likely targeting mid-market land-and-expand."
-            ),
-            "impact": "high",
-            "date": today,
-        },
-        {
-            "source": "finance",
-            "title": "Vendor consolidation chatter",
-            "body": (
-                "Analyst notes mention CFO-led stack reviews; multi-year contracts "
-                "may be vulnerable where ROI proof is thin."
-            ),
-            "impact": "low",
-            "date": today,
-        },
-    ]
+def get_signals_for_company(company_name: str, competitors: list[str]) -> list[Signal]:
+    """
+    Aggregate signals for a company's competitive context.
+
+    Pulls from all scrapers, deduplicates, and ranks by impact + recency.
+
+    Note: `company_name` is reserved for future scoping; monitoring currently uses `competitors`.
+    """
+    _ = company_name
+    all_targets = competitors  # monitor competitors
+    all_signals: list[Signal] = []
+
+    all_signals += get_news_signals(all_targets)
+    all_signals += get_job_signals(all_targets)
+    all_signals += get_funding_signals(all_targets)
+
+    seen_titles: set[str] = set()
+    deduped: list[Signal] = []
+    for s in all_signals:
+        if s.title not in seen_titles:
+            seen_titles.add(s.title)
+            deduped.append(s)
+
+    impact_order = {"high": 0, "medium": 1, "low": 2}
+    deduped.sort(key=lambda x: x.date, reverse=True)
+    deduped.sort(key=lambda s: impact_order[s.impact])
+
+    return deduped[:30]
+
+
+def get_signals_for_competitor(competitor: str) -> list[Signal]:
+    return get_signals_for_company("", [competitor])

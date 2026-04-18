@@ -9,6 +9,8 @@ class Signal(BaseModel):
     body: str
     impact: Literal["high", "medium", "low"]
     date: str
+    company: str = ""
+    tags: list[str] = Field(default_factory=list)
 
 
 class Action(BaseModel):
