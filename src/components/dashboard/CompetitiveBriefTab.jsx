@@ -3,11 +3,13 @@ import { ErrorBanner } from '../ErrorBanner.jsx'
 import { Modal } from '../Modal.jsx'
 import { ImpactBadge, UrgencyBadge } from '../badges.jsx'
 import {
+  API_V1,
   apiRequest,
+  buildV1Query,
+  deriveBriefActions,
   normalizeBattlecardPayload,
-  normalizeBriefPayload,
 } from '../../lib/api.js'
-import { getSession, getSessionId } from '../../lib/session.js'
+import { getSession } from '../../lib/session.js'
 
 export function CompetitiveBriefTab() {
   const session = useMemo(() => getSession(), [])
@@ -24,12 +26,11 @@ export function CompetitiveBriefTab() {
   const [modalOpen, setModalOpen] = useState(false)
   const [copyLabel, setCopyLabel] = useState('Copy')
 
-  const sessionId = getSessionId()
-
   const generateBrief = async () => {
     setError('')
-    if (!sessionId) {
-      setError('Missing session. Start a new session from setup.')
+    const s = getSession()
+    if (!s?.company?.trim()) {
+      setError('Missing company. Start a new session from setup.')
       return
     }
     if (!competitor) {
@@ -38,14 +39,28 @@ export function CompetitiveBriefTab() {
     }
     setLoadingBrief(true)
     try {
-      const data = await apiRequest('/api/brief', {
-        method: 'POST',
-        body: JSON.stringify({ session_id: sessionId, competitor }),
+      const q = buildV1Query({
+        company_name: s.company.trim(),
+        competitors: competitor,
       })
-      const normalized = normalizeBriefPayload(data)
-      setSummary(normalized.summary)
-      setSignals(normalized.signals)
-      setActions(normalized.actions)
+      const sigRes = await apiRequest(`${API_V1}/signals${q}`, { method: 'GET' })
+      const sigs = Array.isArray(sigRes.signals) ? sigRes.signals : []
+
+      const agentRes = await apiRequest(`${API_V1}/agent/analyze`, {
+        method: 'POST',
+        body: JSON.stringify({
+          company_name: s.company.trim(),
+          competitors: [competitor],
+          query:
+            'Write an executive competitive brief: 3 short paragraphs on momentum, risks, and what our sales team should watch.',
+        }),
+      })
+
+      const analysis =
+        typeof agentRes.analysis === 'string' ? agentRes.analysis : ''
+      setSummary(analysis)
+      setSignals(sigs)
+      setActions(deriveBriefActions(sigs))
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to generate brief.')
     } finally {
@@ -55,15 +70,21 @@ export function CompetitiveBriefTab() {
 
   const generateBattlecard = async () => {
     setError('')
-    if (!sessionId || !competitor) {
-      setError('Generate a brief first and keep a competitor selected.')
+    const s = getSession()
+    if (!s?.company?.trim() || !competitor) {
+      setError('Select a competitor and ensure your company is set in setup.')
       return
     }
     setLoadingCard(true)
     try {
-      const data = await apiRequest('/api/battlecard', {
+      const data = await apiRequest(`${API_V1}/agent/analyze`, {
         method: 'POST',
-        body: JSON.stringify({ session_id: sessionId, competitor }),
+        body: JSON.stringify({
+          company_name: s.company.trim(),
+          competitors: [competitor],
+          query:
+            'Produce a concise markdown battle card: our positioning vs this competitor, their likely moves, landmines in deals, and 5 bullet talk tracks for AEs.',
+        }),
       })
       const text = normalizeBattlecardPayload(data)
       setBattleText(text || JSON.stringify(data, null, 2))

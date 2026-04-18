@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ErrorBanner } from '../ErrorBanner.jsx'
-import { apiRequest, normalizeRankedAccounts } from '../../lib/api.js'
-import { getSessionId } from '../../lib/session.js'
+import { API_V1, apiRequest, buildV1Query, rankTargetAccounts } from '../../lib/api.js'
+import { getSession, getSessionId } from '../../lib/session.js'
 
 export function AccountPrioritizerTab() {
   const [accounts, setAccounts] = useState([])
@@ -15,13 +15,25 @@ export function AccountPrioritizerTab() {
       setError('Missing session. Start a new session from setup.')
       return
     }
+    const session = getSession()
+    if (!session?.accounts?.length) {
+      setError('Add target accounts in setup first.')
+      return
+    }
+    if (!session.company?.trim() || !session.competitors?.length) {
+      setError('Add your company and competitors in setup.')
+      return
+    }
+
     setLoading(true)
     try {
-      const data = await apiRequest('/api/prioritize', {
-        method: 'POST',
-        body: JSON.stringify({ session_id: sessionId }),
+      const q = buildV1Query({
+        company_name: session.company.trim(),
+        competitors: session.competitors.join(','),
       })
-      setAccounts(normalizeRankedAccounts(data))
+      const data = await apiRequest(`${API_V1}/signals${q}`, { method: 'GET' })
+      const signals = Array.isArray(data.signals) ? data.signals : []
+      setAccounts(rankTargetAccounts(session.accounts, signals))
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Prioritization failed.')
     } finally {
@@ -40,7 +52,8 @@ export function AccountPrioritizerTab() {
               Account Prioritizer
             </h2>
             <p className="mt-1 text-sm text-slate-600">
-              Rank your target accounts using live competitive context.
+              Rank target accounts using the merged signal feed (client-side scoring
+              until a dedicated prioritize API exists).
             </p>
           </div>
           <button

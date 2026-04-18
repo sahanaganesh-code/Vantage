@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { ErrorBanner } from '../ErrorBanner.jsx'
 import { ImpactBadge } from '../badges.jsx'
-import { apiRequest, normalizeSignalsList } from '../../lib/api.js'
-import { getSessionId } from '../../lib/session.js'
+import { API_V1, apiRequest, buildV1Query } from '../../lib/api.js'
+import { getSession, getSessionId } from '../../lib/session.js'
 
 function formatDate(value) {
   if (!value) return '—'
@@ -34,11 +34,20 @@ export function SignalFeedTab() {
       setLoading(true)
       setError('')
       try {
-        const data = await apiRequest(
-          `/api/signals?session_id=${encodeURIComponent(sessionId)}`,
-          { method: 'GET' },
-        )
-        if (!cancelled) setItems(normalizeSignalsList(data))
+        const session = getSession()
+        if (!session?.company?.trim() || !session?.competitors?.length) {
+          if (!cancelled) {
+            setError('Add your company and competitors in setup to load signals.')
+          }
+          return
+        }
+        const q = buildV1Query({
+          company_name: session.company.trim(),
+          competitors: session.competitors.join(','),
+        })
+        const data = await apiRequest(`${API_V1}/signals${q}`, { method: 'GET' })
+        const list = Array.isArray(data.signals) ? data.signals : []
+        if (!cancelled) setItems(list)
       } catch (e) {
         if (!cancelled) {
           setError(e instanceof Error ? e.message : 'Could not load signals.')

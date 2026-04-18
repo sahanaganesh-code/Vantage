@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { ErrorBanner } from '../components/ErrorBanner.jsx'
 import { PillInput } from '../components/PillInput.jsx'
 import { VantageLogo } from '../components/VantageLogo.jsx'
-import { apiRequest } from '../lib/api.js'
 import { saveSession } from '../lib/session.js'
 
 export function SetupPage() {
@@ -32,20 +31,12 @@ export function SetupPage() {
 
     setSubmitting(true)
     try {
-      const data = await apiRequest('/api/setup', {
-        method: 'POST',
-        body: JSON.stringify({
-          company: company.trim(),
-          competitors,
-          accounts,
-        }),
-      })
-      const sessionId = data?.session_id ?? data?.sessionId
-      if (!sessionId) {
-        throw new Error('Setup succeeded but no session id was returned.')
-      }
+      const sessionId =
+        typeof crypto !== 'undefined' && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `session-${Date.now()}`
       saveSession({
-        sessionId: String(sessionId),
+        sessionId,
         company: company.trim(),
         competitors,
         accounts,
