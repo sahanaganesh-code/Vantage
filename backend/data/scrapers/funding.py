@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 from backend.data.models import Signal
 
@@ -21,7 +21,7 @@ def _load_funding() -> list[dict[str, Any]]:
 _AMOUNT_RE = re.compile(r"\$\s*([\d,.]+)\s*([KMB])?", re.IGNORECASE)
 
 
-def _amount_usd(amount: str) -> float | None:
+def _amount_usd(amount: str) -> Optional[float]:
     m = _AMOUNT_RE.search(amount or "")
     if not m:
         return None
