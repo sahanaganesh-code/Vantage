@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import re
 import string
+from pathlib import Path
 from typing import Final, Literal
 
 import requests
@@ -11,7 +12,10 @@ from urllib.parse import quote_plus
 
 from backend.data.models import Signal
 
-load_dotenv()
+# backend/.env — works no matter which directory you run Python from
+_BACKEND_ROOT = Path(__file__).resolve().parents[2]
+load_dotenv(_BACKEND_ROOT / ".env")
+load_dotenv()  # optional: repo-root .env overrides for local experiments
 
 _GNEWS_URL: Final[str] = "https://gnews.io/api/v4/search"
 _HIGH_IMPACT = re.compile(
