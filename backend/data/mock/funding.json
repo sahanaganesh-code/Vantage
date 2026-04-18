@@ -1,0 +1,19 @@
+[
+  {"company": "Linear", "amount": "$35M", "round": "Series B", "date": "2025-02-10", "investors": ["Sequoia", "Accel"], "signal_interpretation": "New budget cycle, likely expanding engineering tooling spend"},
+  {"company": "Notion", "amount": "$275M", "round": "Series C", "date": "2025-01-22", "investors": ["Coatue", "Sequoia"], "signal_interpretation": "Balance sheet strength to compete on AI features and enterprise"},
+  {"company": "Coda", "amount": "$100M", "round": "Series D", "date": "2024-12-05", "investors": ["Greylock", "Kleiner Perkins"], "signal_interpretation": "Room to invest in automation and platform breadth"},
+  {"company": "Airtable", "amount": "$735M", "round": "Series F", "date": "2024-11-18", "investors": ["Greenoaks", "Willett"], "signal_interpretation": "Large war chest for AI field types and enterprise apps"},
+  {"company": "ClickUp", "amount": "$400M", "round": "Series C", "date": "2024-10-30", "investors": ["Georgian", "Craft"], "signal_interpretation": "Aggressive GTM and product bundling vs incumbents"},
+  {"company": "Figma", "amount": "$200M", "round": "Secondary", "date": "2024-10-12", "investors": ["a16z", "DST"], "signal_interpretation": "Employee liquidity; signals mature cap table ahead of IPO window"},
+  {"company": "Asana", "amount": "$45M", "round": "PIPE", "date": "2024-09-28", "investors": ["Generation", "BlackRock"], "signal_interpretation": "Incremental capital for AI roadmap and profitability bridge"},
+  {"company": "Monday.com", "amount": "$150M", "round": "Convertible", "date": "2024-09-01", "investors": ["Sapphire", "Hamilton Lane"], "signal_interpretation": "Flexible financing for M&A optionality"},
+  {"company": "HubSpot", "amount": "$0", "round": "Strategic", "date": "2024-08-20", "investors": ["Google Cloud"], "signal_interpretation": "Partnership capital; deeper CRM + cloud co-sell"},
+  {"company": "Salesforce", "amount": "$500M", "round": "Debt Facility", "date": "2024-08-02", "investors": ["JPMorgan", "Citi"], "signal_interpretation": "Cheap leverage to fund tuck-in acquisitions"},
+  {"company": "Ramp", "amount": "$300M", "round": "Series D", "date": "2025-03-03", "investors": ["Founders Fund", "D1"], "signal_interpretation": "Spend management consolidation play heating up"},
+  {"company": "Gong", "amount": "$250M", "round": "Series E", "date": "2025-01-15", "investors": ["Sequoia", "Franklin Templeton"], "signal_interpretation": "Revenue intelligence vendors doubling down on AI coaching"},
+  {"company": "Deel", "amount": "$50M", "round": "Extension", "date": "2024-12-18", "investors": ["a16z", "Spark"], "signal_interpretation": "Extension round; focus on profitability over hypergrowth"},
+  {"company": "Rippling", "amount": "$450M", "round": "Series E", "date": "2024-11-02", "investors": ["Greenoaks", "Coatue"], "signal_interpretation": "HRIS consolidation and IT management convergence"},
+  {"company": "Miro", "amount": "$400M", "round": "Series C", "date": "2024-07-14", "investors": ["ICONIQ", "Accel"], "signal_interpretation": "Whiteboard category spend competing with Figma FigJam"},
+  {"company": "Loom", "amount": "$130M", "round": "Series C", "date": "2024-06-01", "investors": ["Sequoia", "Kleiner Perkins"], "signal_interpretation": "Async video tooling embedded into collaboration suites"},
+  {"company": "Superhuman", "amount": "$75M", "round": "Series C", "date": "2024-05-10", "investors": ["IVP", "Avenir"], "signal_interpretation": "Email productivity race adds AI features and team plans"}
+]
