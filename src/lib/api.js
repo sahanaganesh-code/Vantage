@@ -1,5 +1,10 @@
+const _viteApi = import.meta.env.VITE_API_URL
 const API_BASE =
-  import.meta.env.VITE_API_URL?.replace(/\/$/, '') || 'http://localhost:8000'
+  typeof _viteApi === 'string' && _viteApi.trim().length > 0
+    ? _viteApi.replace(/\/$/, '')
+    : import.meta.env.DEV
+      ? ''
+      : 'http://localhost:8000'
 
 /** FastAPI surface (Person 3) — all live data + agent routes. */
 export const API_V1 = '/api/v1'
@@ -47,10 +52,20 @@ export async function apiRequest(path, options = {}) {
     ...options.headers,
   }
 
-  const res = await fetch(url, {
-    ...options,
-    headers,
-  })
+  let res
+  try {
+    res = await fetch(url, {
+      ...options,
+      headers,
+    })
+  } catch (e) {
+    if (e instanceof TypeError) {
+      throw new Error(
+        'Could not reach the API. In dev, start the backend (port 8000) and use `npm run dev` so /api is proxied. Example: PYTHONPATH=. uvicorn backend.api.main:app --reload --host 127.0.0.1 --port 8000',
+      )
+    }
+    throw e
+  }
 
   const text = await res.text()
   let data = null
